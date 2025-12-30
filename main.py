@@ -26,16 +26,17 @@ def draw_board(screen: pygame.Surface)->None:
 class TetrisBlock(pygame.Rect):
     def __init__(self, position:Tuple[int, int]):
         super().__init__(position[0], position[1], BLOCK_SIZE, BLOCK_SIZE)
-        self.moving = True
     
         
 class TetrisGame:
     def __init__(self):
-        self.vector = [[0]*300 for i in range(480)] #480*300 matrix
+        self.vector:List[List[int]] = [[0]*300 for i in range(480)] #480*300 matrix
         self.tetris_step:List[TetrisBlock] = []
+        self.tetris_blocks: List[List[TetrisBlock]] = []
+        self.moving = True
     
     @staticmethod
-    def get_block_on_direction(direction:str, source_position:Tuple[int, int]):
+    def get_block_on_direction(direction:str, source_position:Tuple[int, int])->TetrisBlock:
         x, y = source_position
         if(direction=='up'):
             position = TetrisBlock((x, y-15))
@@ -58,21 +59,32 @@ class TetrisGame:
             position = self.get_block_on_direction(direction, tetris_step[index].topleft)
             tetris_step.append(position)
         self.tetris_step = tetris_step
+        self.tetris_blocks.append(tetris_step)
+        self.moving = True
     
-    def update_tetris_step(self):
+    def update_tetris_step(self)->None:
         if not any([block.y >= (480-15) for block in self.tetris_step]):
             for block in self.tetris_step:
                 block.y += BLOCK_SIZE
-            else:
-                self.moving = False
+        else:
+            self.moving = False
     
-    def draw_tetris_step(self):
-        for block in self.tetris_step:
-            pygame.draw.rect(screen, (255, 0, 0), block)
+    def draw_tetris_step(self)->None:
+        for step in self.tetris_blocks:
+            for block in step:
+                pygame.draw.rect(screen, (255, 0, 0), block)
     
-    def update_block_vector(self):
+    def _get_block_coordinates(self, coord:Tuple[int, int])->Tuple[int, int]:
+        (x, y) = (coord[1], coord[0])
+        x = 0 if x == 0 else (x+1)//15
+        y = 0 if y == 0 else (y+1)//15
+        return (x, y)
+
+    def update_block_vector(self)->None:
         if not self.moving:
-            pass
+            for block in self.tetris_step:
+                x, y = self._get_block_coordinates(block.topleft)
+                self.vector[x][y] = 1
 
 
 game = TetrisGame()    
@@ -86,7 +98,11 @@ while running:
         if event.type == pygame.QUIT:
             running = False
     
+    if game.moving == False:
+        game.generate_tetris_step_pos()
     game.update_tetris_step()
     game.draw_tetris_step()
+    game.update_block_vector()
+
     time.sleep(0.2)
     pygame.display.flip()
